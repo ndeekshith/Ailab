@@ -1,0 +1,882 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Code Snippets</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            line-height: 1.6;
+            margin: 20px;
+        }
+        h1 {
+            text-align: center;
+        }
+        .code-container {
+            position: relative;
+            margin-bottom: 20px;
+        }
+        pre {
+            background-color: #f4f4f4;
+            padding: 1em;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        .copy-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            padding: 5px 10px;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            background-color: #007bff;
+            color: white;
+        }
+        .copy-btn:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+
+<h1>AI LAB Experiments</h1>
+
+<div class="code-container">
+    <h2>Breadth-First Search (BFS)</h2>
+    <pre><code id="bfs-code">
+from collections import deque
+def bfs(graph, start, goal):
+    visited = set()
+    queue = deque([[start]])
+    traversal = []  # To store the traversal order
+
+    if start == goal:
+        return [start], [start]
+
+    while queue:
+        path = queue.popleft()
+        node = path[-1]
+
+        if node not in visited:
+            visited.add(node)
+            traversal.append(node)
+
+            for neighbor in graph[node]:
+                new_path = list(path)
+                new_path.append(neighbor)
+                queue.append(new_path)
+
+                if neighbor == goal:
+                    traversal.append(neighbor)
+                    return new_path, traversal
+    return None, traversal
+graph = {
+    'A' : ['B','C'],
+    'B' : ['D','E'],
+    'C' : ['F'],
+    'D' : [],
+    'E' : ['F'],
+    'F' : []
+}
+start = 'A'
+goal = 'F'
+path, traversal = bfs(graph, start, goal)
+
+print(f"Traversal Order: {traversal}")
+print(f"Path from {start} to {goal}: {path}")
+    </code></pre>
+    <button class="copy-btn" onclick="copyCode('bfs-code', this)">Copy</button>
+</div>
+
+<div class="code-container">
+    <h2>Depth-First Search (DFS) - Recursive</h2>
+    <pre><code id="dfs-recursive-code">
+def dfs_recursive(graph, node, visited=None):
+    if visited is None:
+        visited = set()
+    visited.add(node)
+    print(node)  # This prints the traversal order
+    for neighbor in graph.get(node, []):
+        if neighbor not in visited:
+            dfs_recursive(graph, neighbor, visited)
+    return visited  # Return after exploring all neighbors
+
+# Graph definition
+graph = {
+    'A': ['B', 'C'],
+    'B': ['A', 'D', 'E'],
+    'C': ['A', 'F'],
+    'D': ['B'],
+    'E': ['B', 'F'],
+    'F': ['C', 'E']
+}
+
+# Start DFS
+dfs_recursive(graph, 'A')
+    </code></pre>
+    <button class="copy-btn" onclick="copyCode('dfs-recursive-code', this)">Copy</button>
+</div>
+
+<div class="code-container">
+    <h2>Depth-First Search (DFS) - Iterative</h2>
+    <pre><code id="dfs-iterative-code">
+def dfs_iterative(graph, start):
+    visited = set()
+    stack = [start]
+
+    while stack:
+        node = stack.pop()
+        if node not in visited:
+            visited.add(node)
+            print(node)  # Traversal order
+            # Add neighbors in reverse order to match recursive DFS order
+            stack.extend(reversed(graph.get(node, [])))
+
+    return visited
+graph = {
+    'A': ['B', 'C'],
+    'B': ['A', 'D', 'E'],
+    'C': ['A', 'F'],
+    'D': ['B'],
+    'E': ['B', 'F'],
+    'F': ['C', 'E']
+}
+dfs_iterative(graph, 'A')
+    </code></pre>
+    <button class="copy-btn" onclick="copyCode('dfs-iterative-code', this)">Copy</button>
+</div>
+
+<div class="code-container">
+    <h2>8-Puzzle Solver</h2>
+    <pre><code id="8puzzle-code">
+from copy import deepcopy
+import numpy as np
+import time
+import sys
+
+def is_solvable(puzzle):
+    inv = 0
+    for i in range(len(puzzle)):
+        for j in range(i + 1, len(puzzle)):
+            if puzzle[i] != 0 and puzzle[j] != 0 and puzzle[i] > puzzle[j]:
+                inv += 1
+    return inv % 2 == 0
+
+def coordinates(puzzle):
+    pos = np.array(range(9))
+    for p, q in enumerate(puzzle):
+        pos[q] = p
+    return pos
+
+def manhattan(puzzle, goal):
+    a = abs(puzzle // 3 - goal // 3)
+    b = abs(puzzle % 3 - goal % 3)
+    mhcost = a + b
+    return sum(mhcost[1:])
+
+def misplaced_tiles(puzzle, goal):
+    mscost = np.sum(puzzle != goal) - 1
+    return mscost if mscost > 0 else 0
+
+def bestsolution(state):
+    bestsol = np.array([], int).reshape(-1, 9)
+    count = len(state) - 1
+    while count != -1:
+        bestsol = np.insert(bestsol, 0, state[count]['puzzle'], 0)
+        count = state[count]['parent']
+    return bestsol.reshape(-1, 3, 3)
+
+def evaluvate(puzzle, goal):
+    steps = np.array([
+        ('up', [0, 1, 2], -3),
+        ('down', [6, 7, 8], 3),
+        ('left', [0, 3, 6], -1),
+        ('right', [2, 5, 8], 1)
+    ], dtype=[('move', str, 1), ('position', list), ('head', int)])
+
+    dtstate = [('puzzle', list), ('parent', int), ('gn', int), ('hn', int)]
+    costg = coordinates(goal)
+
+    parent = -1
+    gn = 0
+    hn = manhattan(coordinates(puzzle), costg)
+    state = np.array([(puzzle, parent, gn, hn)], dtype=dtstate)
+
+    dtpriority = [('position', int), ('fn', int)]
+    priority = np.array([(0, hn)], dtype=dtpriority)
+
+    while True:
+        priority = np.sort(priority, kind='mergesort', order=['fn', 'position'])
+        position, fn = priority[0]
+        priority = np.delete(priority, 0, 0)
+
+        puzzle, parent, gn, hn = state[position]
+        puzzle = np.array(puzzle)
+        blank = int(np.where(puzzle == 0)[0])
+        gn += 1
+
+        for s in steps:
+            if blank not in s['position']:
+                openstates = deepcopy(puzzle)
+                openstates[blank], openstates[blank + s['head']] = openstates[blank + s['head']], openstates[blank]
+
+                if ~(np.all(list(state['puzzle']) == openstates, 1)).any():
+                    hn = manhattan(coordinates(openstates), costg)
+                    q = np.array([(openstates, position, gn, hn)], dtype=dtstate)
+                    state = np.append(state, q, 0)
+
+                    fn = gn + hn
+                    q = np.array([(len(state) - 1, fn)], dtype=dtpriority)
+                    priority = np.append(priority, q, 0)
+
+                    if np.array_equal(openstates, goal):
+                        print("The 8 puzzle is solvable using Manhattan Distance.\n")
+                        return state, len(priority)
+    return state, len(priority)
+
+def evaluvate_misplaced(puzzle, goal):
+    steps = np.array([
+        ('up', [0, 1, 2], -3),
+        ('down', [6, 7, 8], 3),
+        ('left', [0, 3, 6], -1),
+        ('right', [2, 5, 8], 1)
+    ], dtype=[('move', str, 1), ('position', list), ('head', int)])
+
+    dtstate = [('puzzle', list), ('parent', int), ('gn', int), ('hn', int)]
+    costg = coordinates(goal)
+
+    parent = -1
+    gn = 0
+    hn = misplaced_tiles(coordinates(puzzle), costg)
+    state = np.array([(puzzle, parent, gn, hn)], dtype=dtstate)
+
+    dtpriority = [('position', int), ('fn', int)]
+    priority = np.array([(0, hn)], dtype=dtpriority)
+
+    while True:
+        priority = np.sort(priority, kind='mergesort', order=['fn', 'position'])
+        position, fn = priority[0]
+        priority = np.delete(priority, 0, 0)
+
+        puzzle, parent, gn, hn = state[position]
+        puzzle = np.array(puzzle)
+        blank = int(np.where(puzzle == 0)[0])
+        gn += 1
+
+        for s in steps:
+            if blank not in s['position']:
+                openstates = deepcopy(puzzle)
+                openstates[blank], openstates[blank + s['head']] = openstates[blank + s['head']], openstates[blank]
+
+                if ~(np.all(list(state['puzzle']) == openstates, 1)).any():
+                    hn = misplaced_tiles(coordinates(openstates), costg)
+                    q = np.array([(openstates, position, gn, hn)], dtype=dtstate)
+                    state = np.append(state, q, 0)
+
+                    fn = gn + hn
+                    q = np.array([(len(state) - 1, fn)], dtype=dtpriority)
+                    priority = np.append(priority, q, 0)
+
+                    if np.array_equal(openstates, goal):
+                        print("The 8 puzzle is solvable using Misplaced Tiles.\n")
+                        return state, len(priority)
+    return state, len(priority)
+
+def main():
+    # Hardcoded initial and goal state
+    puzzle = [1, 2, 3, 4, 0, 5, 6, 7, 8]
+    goal = [1, 2, 3, 4, 5, 6, 7, 8, 0]
+
+    print("Initial State:")
+    print(np.array(puzzle).reshape(3, 3))
+    print("\nGoal State:")
+    print(np.array(goal).reshape(3, 3))
+
+    if not is_solvable(puzzle):
+        print("\nThe 8 puzzle is unsolvable.")
+        sys.exit()
+
+    # Choose heuristic: 1 for Manhattan, 2 for Misplaced tiles
+    choice = 1  # Change to 2 for Misplaced Tiles heuristic
+
+    if choice == 1:
+        state, visited = evaluvate(puzzle, goal)
+    else:
+        state, visited = evaluvate_misplaced(puzzle, goal)
+
+    bestpath = bestsolution(state)
+    print("\nPath to Goal:")
+    for step in bestpath:
+        print(step, "\n")
+
+    totalmoves = len(bestpath) - 1
+    print(f"Steps to reach goal: {totalmoves}")
+    print(f"Total nodes visited: {len(state) - visited}")
+    print(f"Total nodes generated: {len(state)}")
+
+if __name__ == "__main__":
+    main()
+    </code></pre>
+    <button class="copy-btn" onclick="copyCode('8puzzle-code', this)">Copy</button>
+</div>
+
+<div class="code-container">
+    <h2>A* Algorithm</h2>
+    <pre><code id="a-star-code">
+from collections import deque
+
+class Graph:
+    def __init__(self, adjacency_list):
+        self.adjacency_list = adjacency_list
+
+    def get_neighbors(self, v):
+        return self.adjacency_list[v]
+
+    def h(self, n):
+        H = {
+            'A': 1,
+            'B': 1,
+            'C': 1,
+            'D': 1,
+            'E': 1,
+        }
+        return H[n]
+
+    def a_star_algorithm(self, start_node, stop_node):
+        open_list = set([start_node])
+        closed_list = set([])
+        g = {}
+        g[start_node] = 0
+        parents = {}
+        parents[start_node] = start_node
+
+        while len(open_list) > 0:
+            n = None
+            for v in open_list:
+                if n is None or g[v] + self.h(v) < g[n] + self.h(n):
+                    n = v
+
+            if n is None:
+                print('Path does not exist!')
+                return None
+
+            if n == stop_node:
+                reconst_path = []
+                while parents[n] != n:
+                    reconst_path.append(n)
+                    n = parents[n]
+                reconst_path.append(start_node)
+                reconst_path.reverse()
+                print('Path found: {}'.format(reconst_path))
+                return reconst_path
+
+            for (m, weight) in self.get_neighbors(n):
+                if m not in open_list and m not in closed_list:
+                    open_list.add(m)
+                    parents[m] = n
+                    g[m] = g[n] + weight
+                else:
+                    if g[m] > g[n] + weight:
+                        g[m] = g[n] + weight
+                        parents[m] = n
+                        if m in closed_list:
+                            closed_list.remove(m)
+                            open_list.add(m)
+
+            open_list.remove(n)
+            closed_list.add(n)
+
+        print('Path does not exist!')
+        return None
+
+adjacency_list = {
+    'A': [('B', 1), ('C', 3), ('D', 7)],
+    'B': [('D', 5), ('E', 1)],
+    'C': [('D', 12)],
+    'E': [('D', 1)]
+}
+
+graph1 = Graph(adjacency_list)
+graph1.a_star_algorithm('A', 'D')
+    </code></pre>
+    <button class="copy-btn" onclick="copyCode('a-star-code', this)">Copy</button>
+</div>
+
+<div class="code-container">
+    <h2>Numpy Info</h2>
+    <pre><code id="numpy-info-code">
+import numpy as n
+myarray = n.array([[1,2],[3,4]])
+print("Array Type: ",type(myarray))
+print("No. of dimensions: ",myarray.ndim)
+print("Shape of array: ",myarray.shape)
+print("Size of array: ",myarray.size)
+print("Array store elements of type: ",myarray.dtype)
+    </code></pre>
+    <button class="copy-btn" onclick="copyCode('numpy-info-code', this)">Copy</button>
+</div>
+
+<div class="code-container">
+    <h2>Numpy Array Indexing</h2>
+    <pre><code id="array-indexing-code">
+import numpy as np
+
+# Create a 2D NumPy array
+arr = np.array([
+    [-1, 2, 0, 4],
+    [4, -0.5, 6, 0],
+    [2.6, 0, 7, 8],
+    [3, -7, 4, 2.0]
+])
+
+# 1. First 2 rows and alternate columns (0 and 2)
+temp = arr[:2, ::2]
+print("Array with first 2 rows and alternate columns (0 and 2):\n", temp)
+
+# 2. Elements at indices (0,3), (1,2), (2,1), (3,0)
+temp = arr[[0, 1, 2, 3], [3, 2, 1, 0]]
+print("\nElements at indices (0,3), (1,2), (2,1), (3,0):\n", temp)
+
+# 3. Elements greater than 0
+cond = arr > 0
+temp = arr[cond]
+print("\nElements greater than 0:\n", temp)
+    </code></pre>
+    <button class="copy-btn" onclick="copyCode('array-indexing-code', this)">Copy</button>
+</div>
+
+<div class="code-container">
+    <h2>Numpy Basic Operations</h2>
+    <pre><code id="basic-operations-code">
+import numpy as np
+a = np.array([1, 2, 5, 3])
+print ("Adding 1 to every element:", a+1)
+print ("Subtracting 3 from each element:", a-3)
+print ("Multiplying each element by 10:", a*10)
+print ("Squaring each element:", a**2)
+a *= 2
+print ("Doubled each element of original array:", a)
+a = np.array([[1, 2, 3], [3, 4, 5], [9, 6, 0]])
+print ("\nOriginal array:\n", a)
+print ("Transpose of array:\n", a.T)
+    </code></pre>
+    <button class="copy-btn" onclick="copyCode('basic-operations-code', this)">Copy</button>
+</div>
+
+<div class="code-container">
+    <h2>Numpy Unary Operations</h2>
+    <pre><code id="unary-operations-code">
+import numpy as np
+arr = np.array([[1, 5, 6],
+[4, 7, 2],
+[3, 1, 9]])
+print ("Largest element is:", arr.max())
+print ("Row-wise maximum elements:", arr.max(axis
+= 1))
+print ("Column-wise minimum elements:",arr.min(axis = 0))
+print ("Sum of all array elements:",arr.sum())
+print ("Cumulative sum along each row:\n",
+arr.cumsum(axis = 1))
+    </code></pre>
+    <button class="copy-btn" onclick="copyCode('unary-operations-code', this)">Copy</button>
+</div>
+
+<div class="code-container">
+    <h2>Numpy Binary Operations</h2>
+    <pre><code id="binary-operations-code">
+import numpy as np
+a = np.array([[1, 2],  [3, 4]])
+b = np.array([[4, 3], [2, 1]])
+print ("Array sum:\n", a + b)
+print ("Array multiplication:\n", a*b)
+print ("Matrix multiplication:\n", a.dot(b))
+    </code></pre>
+    <button class="copy-btn" onclick="copyCode('binary-operations-code', this)">Copy</button>
+</div>
+
+<div class="code-container">
+    <h2>Numpy Sorting</h2>
+    <pre><code id="sorting-code">
+import numpy as np
+a = np.array([[1, 4, 2], [3, 4, 6], [0, -1, 5]])
+print("Array elements in sorted order:\n", np.sort(a, axis=None))
+print("Row-wise sorted array:\n", np.sort(a, axis=1))
+print("Column-wise sort by applying merge-sort:\n", np.sort(a, axis=0, kind='mergesort'))
+
+dtypes = [('name', 'S10'), ('grad_year', int), ('cgpa', float)]
+values = [('Hrithik', 2009, 8.5), ('Ajay', 2008, 8.7), ('Pankaj', 2008, 7.9), ('Aakash', 2009, 9.0)]
+arr = np.array(values, dtype=dtypes)
+print("Array sorted by names:\n", np.sort(arr, order='name'))
+print("Array sorted by graduation year and then cgpa:\n", np.sort(arr, order=['grad_year', 'cgpa']))
+    </code></pre>
+    <button class="copy-btn" onclick="copyCode('sorting-code', this)">Copy</button>
+</div>
+
+<div class="code-container">
+    <h2>Matplotlib - Line Plot</h2>
+    <pre><code id="line-plot-code">
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+x = np.linspace(0,6, 9)
+y = np.linspace(3, 9, 9)
+print(x)
+print(y)
+plt.plot(x, y)
+plt.show()
+    </code></pre>
+    <button class="copy-btn" onclick="copyCode('line-plot-code', this)">Copy</button>
+</div>
+
+<div class="code-container">
+    <h2>Matplotlib - Two Lines Plot</h2>
+    <pre><code id="two-lines-code">
+import matplotlib.pyplot as plt
+plt.plot([1,2,3,4,5], [6,7,8,9,10], label='population')
+plt.plot([1,2,3,4,5], [2,4,6,8,10], label='consumption')
+plt.xlabel('This is x axis')
+plt.ylabel('This is Y axis')
+plt.title('Random label')
+plt.legend()
+plt.show()
+    </code></pre>
+    <button class="copy-btn" onclick="copyCode('two-lines-code', this)">Copy</button>
+</div>
+
+<div class="code-container">
+    <h2>Matplotlib - Bar Graph</h2>
+    <pre><code id="bar-graph-code">
+import matplotlib.pyplot as plt
+plt.bar([1,2,3,4,5], [2,4,6,8,10], label='Movies')
+plt.xlabel('This is x axis for BAR')
+plt.ylabel('This is Y axis for BAR')
+plt.title('Random label for BAR chart')
+plt.show()
+    </code></pre>
+    <button class="copy-btn" onclick="copyCode('bar-graph-code', this)">Copy</button>
+</div>
+
+<div class="code-container">
+    <h2>Matplotlib - Histogram</h2>
+    <pre><code id="histogram-code">
+import matplotlib.pyplot as plt
+peerPerProduct = [1, 5, 8, 6, 8, 4, 5, 1, 7, 3, 8, 3, 5, 2, 8, 5, 8, 3, 2, 6, 1]
+bins = [1, 2, 3, 4, 5, 6, 7, 8, 9]
+plt.hist(peerPerProduct, bins, histtype='bar',rwidth=0.6)
+plt.show()
+    </code></pre>
+    <button class="copy-btn" onclick="copyCode('histogram-code', this)">Copy</button>
+</div>
+
+<div class="code-container">
+    <h2>Matplotlib - Stack Plot</h2>
+    <pre><code id="stack-plot-code">
+import matplotlib.pyplot as plt
+myDays = [1, 2, 3, 4, 5]
+organic = [8, 9, 8, 3, 3]
+ads = [8, 9, 7, 12, 8]
+affiliate = [3, 5, 5, 4, 3]
+seller = [9, 5, 8, 9, 14]
+plt.plot([], [], color='#F97F51', label='organic')
+plt.plot([], [], color='#1B9CFC', label='ads')
+plt.plot([], [], color='#F8EFBA', label='affiliate')
+plt.plot([], [], color='#58B19F', label='seller')
+
+plt.stackplot(myDays, organic,ads,affiliate,seller, colors=['#F97F51', '#1B9CFC', '#F8EFBA', '#58B19F'])
+plt.xlabel('Number of days')
+plt.ylabel('Sales')
+plt.legend()
+plt.show()
+    </code></pre>
+    <button class="copy-btn" onclick="copyCode('stack-plot-code', this)">Copy</button>
+</div>
+
+<div class="code-container">
+    <h2>Matplotlib - Pie Chart</h2>
+    <pre><code id="pie-chart-code">
+import matplotlib.pyplot as plt
+mypieLabels = ['FB', 'GOOGLE', 'LinkedIn', 'Pinterest', 'Twitter']
+piecolors = ['#F97F51', '#1B9CFC', '#FD7272', '#58B19F', '#55E6C1']
+ads = [8, 9, 7, 12, 8] # This should be defined, e.g., from the stack plot data
+plt.pie(ads, labels=mypieLabels, colors=piecolors, explode=(0, 0.2, 0, 0, 0.1))
+plt.show()
+    </code></pre>
+    <button class="copy-btn" onclick="copyCode('pie-chart-code', this)">Copy</button>
+</div>
+<div class="code-container">
+    <h2>ML Knn and Decsion tree</h2>
+    <pre><code id="ml code">
+
+
+# Import necessary libraries
+import os
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from matplotlib.colors import ListedColormap
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.metrics import confusion_matrix
+from sklearn.tree import DecisionTreeRegressor
+
+# -------------------------------------------------------------------
+# Part 1: K-Nearest Neighbors (K-NN) Classification
+# -------------------------------------------------------------------
+
+# --- Data Preprocessing ---
+
+# Optional: List files in the current working directory to check for the dataset
+# print(os.listdir())
+
+# Load the Social Network Ads dataset
+# Make sure to update the path to where your file is located
+try:
+    data_social = pd.read_csv('C:/Users/amith/Downloads/Social_Network_Ads.csv')
+except FileNotFoundError:
+    print("Social_Network_Ads.csv not found. Please check the file path.")
+    exit()
+
+
+# Display the first 10 rows of the dataset
+print("--- Social Network Ads Dataset Head ---")
+print(data_social.head(10))
+
+# Display information about the dataset
+print("\n--- Dataset Info ---")
+data_social.info()
+
+# Split the dataset into features (X) and target (y)
+X_social = data_social.iloc[:, [2, 3]].values
+y_social = data_social.iloc[:, 4].values
+print("\nTarget variable (y) from Social Network Ads:")
+print(y_social)
+
+# Split the dataset into the Training set and Test set
+X_train_social, X_test_social, y_train_social, y_test_social = train_test_split(X_social, y_social, test_size=0.2, random_state=42)
+print("\nTest set target values (y_test):")
+print(y_test_social)
+
+# Feature Scaling
+sc = StandardScaler()
+X_train_social = sc.fit_transform(X_train_social)
+X_test_social = sc.transform(X_test_social)
+print("\nScaled training data (X_train):")
+print(X_train_social[:5]) # Print first 5 for brevity
+
+# --- K-NN Model Training ---
+
+# Fitting K-NN to the Training set
+classifier = KNeighborsClassifier(n_neighbors=5, p=2, metric='minkowski')
+classifier.fit(X_train_social, y_train_social)
+print("\nK-NN Classifier trained.")
+
+# --- Prediction and Evaluation ---
+
+# Predicting the Test set results
+y_predictor_social = classifier.predict(X_test_social)
+print("\nPredictions on the test set:")
+print(y_predictor_social)
+
+# Making the Confusion Matrix
+cm = confusion_matrix(y_test_social, y_predictor_social)
+print("\nConfusion Matrix:")
+print(cm)
+
+
+# --- Visualization ---
+
+# Visualizing the Training set results
+X_point, y_point = X_train_social, y_train_social
+X1, X2 = np.meshgrid(
+    np.arange(start=X_point[:, 0].min() - 1, stop=X_point[:, 0].max() + 1, step=0.01),
+    np.arange(start=X_point[:, 1].min() - 1, stop=X_point[:, 1].max() + 1, step=0.01)
+)
+plt.contourf(
+    X1,
+    X2,
+    classifier.predict(np.array([X1.ravel(), X2.ravel()]).T).reshape(X1.shape),
+    alpha=0.75,
+    cmap=ListedColormap(('green', 'blue'))
+)
+plt.xlim(X1.min(), X1.max())
+plt.ylim(X2.min(), X2.max())
+for i, j in enumerate(np.unique(y_point)):
+    plt.scatter(
+        X_point[y_point == j, 0],
+        X_point[y_point == j, 1],
+        c=ListedColormap(('green', 'blue'))(i),
+        label=j
+    )
+plt.title('K-NN (Training set)')
+plt.xlabel('Age (Scaled)')
+plt.ylabel('Salary (Scaled)')
+plt.legend()
+plt.show()
+
+
+# Visualizing the Test set results
+X_point, y_point = X_test_social, y_test_social
+X1, X2 = np.meshgrid(
+    np.arange(start=X_point[:, 0].min() - 1, stop=X_point[:, 0].max() + 1, step=0.01),
+    np.arange(start=X_point[:, 1].min() - 1, stop=X_point[:, 1].max() + 1, step=0.01)
+)
+plt.contourf(
+    X1,
+    X2,
+    classifier.predict(np.array([X1.ravel(), X2.ravel()]).T).reshape(X1.shape),
+    alpha=0.75,
+    cmap=ListedColormap(('green', 'blue'))
+)
+plt.xlim(X1.min(), X1.max())
+plt.ylim(X2.min(), X2.max())
+for i, j in enumerate(np.unique(y_point)):
+    plt.scatter(
+        X_point[y_point == j, 0],
+        X_point[y_point == j, 1],
+        c=ListedColormap(('green', 'blue'))(i),
+        label=j
+    )
+plt.title('K-NN (Test set)')
+plt.xlabel('Age (Scaled)')
+plt.ylabel('Salary (Scaled)')
+plt.legend()
+plt.show()
+
+
+# -------------------------------------------------------------------
+# Part 2: Decision Tree Regression
+# -------------------------------------------------------------------
+
+# --- Data Preprocessing ---
+
+# Optional: List files in Downloads to confirm file presence
+# print(os.listdir('C:/Users/amith/Downloads'))
+
+# Load the group study dataset
+try:
+    data_study = pd.read_csv('C:/Users/amith/Downloads/groupStudy.csv')
+except FileNotFoundError:
+    print("groupStudy.csv not found. Please check the file path.")
+    exit()
+
+# Display the dataset
+print("\n--- Group Study Dataset ---")
+print(data_study)
+
+# Split the dataset into features (X) and target (y)
+X_study = data_study.iloc[:, 1:2].values
+y_study = data_study.iloc[:, 2].values
+print("\nFeatures (Hours of study):")
+print(X_study)
+
+# --- Decision Tree Model Training ---
+
+# Fitting Decision Tree Regression to the dataset
+regressor = DecisionTreeRegressor(random_state=0)
+regressor.fit(X_study, y_study)
+print("\nDecision Tree Regressor trained.")
+
+# --- Prediction ---
+
+# Predicting a new result
+y_predicted_study = regressor.predict([[20]])
+print(f"\nPredicted marks for 20 hours of study: {y_predicted_study[0]}")
+
+# --- Visualization ---
+
+# To make the plot smoother, create a range of values
+X_grid = np.arange(min(X_study), max(X_study), 0.01)
+X_grid = X_grid.reshape((len(X_grid), 1))
+
+# Plotting the regression results
+plt.scatter(X_study, y_study, color='red', label='Actual Marks')
+plt.plot(X_grid, regressor.predict(X_grid), color='blue', label='Predicted Marks')
+plt.title('Marks vs Hours of Study (Decision Tree Regression)')
+plt.xlabel('Hours of study')
+plt.ylabel('Marks scored')
+plt.legend()
+plt.show()
+    </code>
+    </pre>
+    <button class="copy-btn" onclick="copyCode('ml code', this)">Copy</button>
+</div>
+<div class="code-container">
+    <h2>Seaborn Implot </h2>
+    <pre><code id="seabornimplot">
+        import seaborn as sns
+        %matplotlib inline
+        df1 = sns.load_dataset('titanic')
+        df1.head()
+
+        sns.set_style('ticks')
+        cusPal = dict(male='#6ab04c', female='#ff7979')
+        plot1 = sns.lmplot(x='age', y='survived', hue='sex', col='sex',palette=cusPal, data=df1)
+        sns.set_context()
+    </code></pre>
+    <button class="copy-btn" onclick="copyCode('seabornimplot', this)">Copy</button>
+</div>
+<div class="code-container">
+    <h2>Seaborn Factorplot</h2>
+    <pre><code id="sea factor">
+        import seaborn as sns
+        %matplotlib inline
+        myDataFrame = sns.load_dataset('exercise')
+        myDataFrame.head()
+        myplot = sns.factorplot(x='time', y='pulse', hue='kind',col='diet', data=myDataFrame)
+        myDataFrame
+    </code></pre>
+    <button class="copy-btn" onclick="copyCode('sea factor', this)">Copy</button>
+</div>
+<div class="code-container">
+    <h2>Seaborn iris</h2>
+    <pre><code id="sea iris">
+        import seaborn as sns
+        import matplotlib.pyplot as plt
+        %matplotlib inline
+        iris = sns.load_dataset('iris')
+        iris.head()
+        sns.swarmplot(x='species', y='petal_length', data=iris)
+    </code></pre>
+    <button class="copy-btn" onclick="copyCode('sea iris', this)">Copy</button>
+</div>
+<div class="code-container">
+    <h2>Seaborn basic plots</h2>
+    <pre><code id="seaplot">
+        import seaborn as sns
+        myTitanic = sns.load_dataset('titanic')
+        myTitanic.head()
+        sns.distplot(myTitanic['fare'])
+        sns.distplot(myTitanic['fare'], kde=False, bins=5)
+        sns.jointplot(x='age', y='fare', data=myTitanic)
+        sns.jointplot(x='age', y='fare', data=myTitanic, kind='reg')
+        myTips = sns.load_dataset('tips')
+        myTips.head()
+        sns.pairplot(myTips)
+    </code></pre>
+    <button class="copy-btn" onclick="copyCode('seaplot', this)">Copy</button>
+</div>
+
+<script>
+    function copyCode(elementId, button) {
+        const codeElement = document.getElementById(elementId);
+        const codeText = codeElement.innerText;
+
+        const textArea = document.createElement('textarea');
+        textArea.value = codeText;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+
+        button.innerText = 'Copied!';
+        setTimeout(() => {
+            button.innerText = 'Copy';
+        }, 2000);
+    }
+</script>
+
+</body>
+</html>
